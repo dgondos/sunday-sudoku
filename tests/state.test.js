@@ -1,0 +1,105 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+let State;
+try { State = require('../state.js'); } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
+function puzzle() {
+  const solution = Array.from({length:81}, (_, i) => (Math.floor(i / 9) * 3 + Math.floor(Math.floor(i / 9) / 3) + i % 9) % 9 + 1);
+  const givens = solution.slice();
+  for (let i = 0; i < 81; i += 2) givens[i] = 0;
+  return {givens, solution, id:'fixture-1', difficulty:'easy'};
+}
+test('a new game preserves clues and starts with blank cells and no penalties', () => {
+  assert.ok(State, 'SudokuState implementation is missing');
+  const game = State.newGame(puzzle(), 1234);
+  assert.deepEqual(game.board, puzzle().givens);
+  assert.equal(game.mistakes, 0);
+  assert.equal(game.elapsedMs, 0);
+  assert.equal(game.finished, false);
+  assert.equal(game.notes.length, 81);
+});
+test('placing numbers protects clues and tracks incorrect attempts', () => {
+  assert.equal(typeof State.place, 'function', 'place is missing');
+  const g = State.newGame(puzzle(), 1);
+  assert.equal(State.place(g, 1, 4, false).changed, false);
+  assert.equal(g.board[1], g.puzzle.givens[1]);
+  assert.equal(State.place(g, 0, 9, false).error, true);
+  assert.equal(g.mistakes, 1);
+  State.place(g, 0, 9, false);
+  assert.equal(g.mistakes, 1);
+  State.place(g, 0, g.puzzle.solution[0], false);
+  assert.equal(g.board[0], g.puzzle.solution[0]);
+});
+test('pencil marks toggle and undo restores moves without refunding mistakes', () => {
+  assert.equal(typeof State.undo, 'function', 'undo is missing');
+  const g = State.newGame(puzzle(), 2);
+  State.place(g, 0, 3, true);
+  assert.equal(g.notes[0], 4);
+  assert.equal(g.board[0], 0);
+  State.place(g, 0, 3, true);
+  assert.equal(g.notes[0], 0);
+  State.place(g, 0, 9, false);
+  assert.equal(State.undo(g), true);
+  assert.equal(g.board[0], 0);
+  assert.equal(g.mistakes, 1);
+  State.place(g, 0, 2, true);
+  State.place(g, 2, g.puzzle.solution[2], false);
+  State.undo(g);
+  assert.equal(g.notes[0], 2);
+});
+test('hints reveal cells and completion scoring cannot be farmed with undo', () => {
+  assert.equal(typeof State.hint, 'function', 'hint is missing');
+  assert.equal(typeof State.score, 'function', 'score is missing');
+  const g = State.newGame(puzzle(), 3);
+  State.hint(g, 0);
+  assert.equal(g.board[0], g.puzzle.solution[0]);
+  assert.equal(g.hints, 1);
+  State.undo(g);
+  assert.equal(g.hints, 1);
+  for (let i = 0; i < 81; i++) if (!g.puzzle.givens[i]) State.place(g, i, g.puzzle.solution[i], false);
+  assert.equal(g.finished, true);
+  const score = State.score(g);
+  assert.ok(score > 0);
+  assert.equal(State.undo(g), false);
+  assert.equal(State.place(g, 0, 0, false).changed, false);
+  assert.equal(State.score(g), score);
+  const hard = State.newGame({...puzzle(), difficulty:'hard'}, 4);
+  hard.board = hard.puzzle.solution.slice(); hard.finished = true;
+  assert.ok(State.score(hard) > score);
+});
+test('leaderboards rank by score then time and do not duplicate a finished game', () => {
+  assert.equal(typeof State.recordWin, 'function', 'recordWin is missing');
+  const g = State.newGame(puzzle(), 5);
+  const scores = [];
+  assert.equal(State.recordWin(scores, g, 'Mum', 10), false);
+  g.board = g.puzzle.solution.slice(); g.finished = true;
+  assert.equal(State.recordWin(scores, g, '<b>Mum</b>', 20), true);
+  assert.equal(scores[0].name, '<b>Mum</b>');
+  assert.equal(State.recordWin(scores, g, 'Mum', 21), false);
+  assert.equal(scores.length, 1);
+  const slow = {...scores[0], id:'slow', elapsedMs:2000};
+  const fast = {...scores[0], id:'fast', elapsedMs:1000};
+  assert.deepEqual(State.ranked([slow, fast], 'easy').map(r => r.id), ['fast','slow']);
+});
+test('autosave restores progress and safely rejects corrupt or unavailable storage', () => {
+  assert.equal(typeof State.readSave, 'function', 'readSave is missing');
+  assert.equal(typeof State.writeSave, 'function', 'writeSave is missing');
+  const values = {};
+  const storage = {getItem:k => values[k] || null, setItem:(k,v) => {values[k]=v;}};
+  const g = State.newGame(puzzle(), 6);
+  State.place(g, 0, g.puzzle.solution[0], false);
+  g.elapsedMs = 24000;
+  const envelope = {version:1, game:g, records:[], preferences:{name:'Mum', errors:true, motion:true}};
+  assert.equal(State.writeSave(storage, envelope), true);
+  assert.deepEqual(State.readSave(storage), envelope);
+  const broken = {getItem:()=>'{broken'};
+  assert.equal(State.readSave(broken), null);
+  const invalid = JSON.parse(JSON.stringify(envelope));
+  invalid.game.board[1] = 0;
+  assert.equal(State.readSave({getItem:()=>JSON.stringify(invalid)}), null);
+  invalid.game.board = g.board.slice(); invalid.game.puzzle.solution[0] = 9;
+  assert.equal(State.readSave({getItem:()=>JSON.stringify(invalid)}), null);
+  assert.equal(State.writeSave({setItem:()=>{throw Error('quota');}}, envelope), false);
+  assert.equal(State.readSave({getItem:()=>{throw Error('denied');}}), null);
+});
+module.exports = {puzzle};

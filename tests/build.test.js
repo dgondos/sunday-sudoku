@@ -1,0 +1,21 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {spawnSync} = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+test('the production build is a standalone HTML page with an offline shell', () => {
+  const result = spawnSync(process.execPath, ['scripts/build.js'], {cwd:root,encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr || 'build command failed');
+  const html = fs.readFileSync(path.join(root,'dist/index.html'),'utf8');
+  assert.ok(html.includes('<style>'));
+  assert.ok(html.includes('SudokuCore'));
+  assert.ok(html.includes('SudokuState'));
+  assert.ok(!/<script[^>]+src=/.test(html));
+  assert.ok(!/href="style.css"/.test(html));
+  assert.ok(!html.includes('https://cdn'));
+  const sw = fs.readFileSync(path.join(root,'dist/sw.js'),'utf8');
+  assert.ok(!sw.includes('__BUILD_ID__'));
+  assert.ok(fs.statSync(path.join(root,'dist/apple-touch-icon.png')).size > 0);
+});

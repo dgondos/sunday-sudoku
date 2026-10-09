@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5ee">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sudoku">
+  <meta name="description" content="A little time for you. A calm, touch-friendly Sudoku with four difficulties, automatic saves, and personal bests. No accounts, ads, or tracking.">
+  <title>Sunday Sudoku — a little time for you</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 44" aria-hidden="true"><path d="M20 40V17M20 29C6 30 4 20 5 13c10-1 15 5 15 16ZM20 22C34 23 38 10 34 4c-10 0-15 7-14 18Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div><h1>Sunday Sudoku</h1><p class="tagline">A little time for you.</p></div>
+      </div>
+      <nav class="header-actions" aria-label="Game menus">
+        <button id="scores-button" class="quiet-button" aria-label="Best scores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v7a5 5 0 0 1-10 0V3ZM7 5H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4m-5 3v5m-4 1h8"/></svg><span>Best scores</span></button>
+        <button id="settings-button" class="quiet-button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg><span>Settings</span></button>
+      </nav>
+    </header>
+    <main class="game-layout" id="game">
+      <section class="board-section" aria-label="Sudoku game">
+        <div class="game-status">
+          <button id="difficulty-button" class="difficulty-pill" aria-label="Choose difficulty"><span class="level-dot"></span><span id="difficulty-label">Easy</span><span class="chevron" aria-hidden="true">⌄</span></button>
+          <button id="pause-button" class="timer-button" aria-label="Pause game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span id="timer">00:00</span></button>
+          <div class="score-display"><span>Score</span><strong id="score">0</strong></div>
+        </div>
+        <div class="board-wrap" id="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="Sudoku puzzle, 9 rows and 9 columns"></div>
+          <div id="pause-cover" class="pause-cover" hidden><span class="pause-leaf" aria-hidden="true">❧</span><h2>A moment of calm.</h2><p>Your puzzle will be right here.</p><button id="resume-button" class="primary-button">Resume game</button></div>
+        </div>
+        <div class="progress-row"><span id="progress-text">Ready when you are</span><span id="save-status" class="save-status">Saved on this device</span></div>
+        <div class="progress-track" role="progressbar" id="progress" aria-label="Puzzle progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill"></div></div>
+      </section>
+      <section class="play-controls" aria-label="Game controls">
+        <div class="control-heading"><span class="eyebrow">ONE SQUARE AT A TIME</span><h2 id="control-title">Find your rhythm.</h2><p id="selection-tip">Tap an empty square, then a number.</p></div>
+        <div id="numpad" class="numpad" aria-label="Number pad"></div>
+        <div class="tools">
+          <button id="undo-button" class="tool-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14"/></svg><span>Undo</span></button>
+          <button id="erase-button" class="tool-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 14 9-10 8 7-9 10H8l-4-4v-3Zm5-6 8 7M12 21h9"/></svg><span>Erase</span></button>
+          <button id="notes-button" class="tool-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 12-12 4 4L8 20H4v-4ZM13 7l4 4"/></svg><span>Notes</span><span class="tool-state" id="notes-state">Off</span></button>
+          <button id="hint-button" class="tool-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16v-2a6 6 0 1 1 8 0v2M8 17h8M9 20h6M10 23h4"/></svg><span>Hint</span></button>
+        </div>
+        <button id="new-button" class="primary-button new-button"><span>New puzzle</span><span aria-hidden="true">＋</span></button>
+        <div class="little-tip"><p id="gentle-tip">No rush. Every square is a small win.</p><button id="help-button" class="text-button">How to play &amp; scoring</button></div>
+      </section>
+    </main>
+    <footer><span class="footer-flower" aria-hidden="true">✳</span> No ads. No accounts. Just a good puzzle.</footer>
+    <noscript><p class="storage-warning">Please enable JavaScript in Safari to play Sudoku.</p></noscript>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+      <button id="modal-close" class="modal-close" aria-label="Close dialog">×</button>
+      <div id="modal-content"></div>
+    </section>
+  </div>
+  <div id="celebration" class="celebration" aria-hidden="true"></div>
+  <script src="puzzles.js"></script>
+  <script src="engine.js"></script>
+  <script src="state.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
